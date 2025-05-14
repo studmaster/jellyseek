@@ -77,6 +77,13 @@ def load_movie_json(json_file: Path):
     with json_file.open("r", encoding="utf-8") as f:
         data = json.load(f)
 
+    # Filter out movies with any null or missing categories
+    required_fields = ["Title", "Plot", "Genres", "Tags", "Actors", "PremiereDate"]
+    data = [
+        item for item in data
+        if all(item.get(field) not in (None, "") for field in required_fields)
+    ]
+
     # ---------- DEDUP SECTION ----------
     unique: "OrderedDict[str, dict]" = OrderedDict()   # keeps first occurrence
     for item in data:
