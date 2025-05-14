@@ -1,4 +1,4 @@
-from langchain_ollama import OllamaLLM
+from langchain_ollama import OllamaLLM, OllamaEmbeddings
 import chromadb
 import os
 from typing import Tuple, List, Dict
@@ -6,6 +6,16 @@ from typing import Tuple, List, Dict
 # Model configurations
 embedding_model = "bge-large"
 generation_model = "gemma3:27b-it-qat"
+
+# Custom embedding function for ChromaDB
+class ChromaDBEmbeddingFunction:
+    def __init__(self, langchain_embeddings):
+        self.langchain_embeddings = langchain_embeddings
+
+    def __call__(self, input):
+        if isinstance(input, str):
+            input = [input]
+        return self.langchain_embeddings.embed_documents(input)
 
 def query_chromadb(collection, query_text: str, n_results: int = 10) -> Tuple[List[str], List[Dict]]:
     """Query the ChromaDB collection for relevant documents."""
@@ -19,7 +29,7 @@ def generate_search_query(original_query: str) -> str:
     """Generate an optimized search query from the original user query"""
     prompt = f"""As an AI assistant using {generation_model}, help convert the following question 
     into a search query optimized for {embedding_model} embeddings. The query should be clear, 
-    concise and focus on key terms that will help find relevant movie information.
+    concise and focus on key terms that will help find relevant movie information. Return only the prompt used for {embedding_model} embeddings.
     
     Question: {original_query}
     
@@ -45,9 +55,22 @@ def generate_final_response(original_query: str, context: str) -> str:
 
 def chat_loop():
     """Main chat loop"""
-    # Initialize ChromaDB client
+    # Initialize ChromaDB client with correct embedding function
     chroma_client = chromadb.PersistentClient(path=os.path.join(os.getcwd(), "chroma_db"))
-    collection = chroma_client.get_collection("movies_rag")
+    
+    # Initialize embedding function
+    embedding = ChromaDBEmbeddingFunction(
+        OllamaEmbeddings(
+            model=embedding_model,
+            base_url="http://100.112.80.41:11434"
+        )
+    )
+    
+    # Get collection with embedding function
+    collection = chroma_client.get_collection(
+        name="movies_rag",
+        embedding_function=embedding
+    )
     
     print("Movie Chat Assistant Ready! (Type 'quit' to exit)")
     
