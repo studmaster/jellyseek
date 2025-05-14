@@ -93,15 +93,14 @@ def load_movie_json(json_file: Path):
 
         documents.append(doc_text)
         ids.append(f"{slug(title)}_{year_from}" or uuid.uuid4().hex)
-        metadatas.append(
-            {
-                "title": title,
-                "year": year_from,
-                "genres": item.get("Genres", []),
-                "critic_rating": item.get("CriticRating"),
-                "official_rating": item.get("OfficialRating"),
-            }
-        )
+        metadatas.append({
+            "title": title,
+            "year": year_from,
+            "genres": ", ".join(item.get("Genres", [])),   # list → string
+            "critic_rating": item.get("CriticRating"),
+            "official_rating": item.get("OfficialRating"),
+        })
+
 
     return documents, ids, metadatas
 
