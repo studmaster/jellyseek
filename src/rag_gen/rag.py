@@ -51,6 +51,23 @@ def slug(s: str) -> str:
     s = unicodedata.normalize("NFKD", s).encode("ascii", "ignore").decode()
     return re.sub(r"[^a-z0-9]+", "_", s.lower()).strip("_")
 
+def clean_metadata(d: dict) -> dict:
+    """
+    Return a copy containing only keys whose values are
+    str | int | float | bool and not None.
+    """
+    out = {}
+    for k, v in d.items():
+        if v is None:
+            continue                      # skip entirely
+        if isinstance(v, bool):
+            out[k] = v
+        elif isinstance(v, (int, float, str)):
+            out[k] = v
+        else:
+            out[k] = str(v)               # final safety net
+    return out
+
 def load_movie_json(json_file: Path):
     with json_file.open("r", encoding="utf-8") as f:
         data = json.load(f)
@@ -93,15 +110,15 @@ def load_movie_json(json_file: Path):
 
         documents.append(doc_text)
         ids.append(f"{slug(title)}_{year_from}" or uuid.uuid4().hex)
-        metadatas.append({
-            "title": title,
-            "year": year_from,
-            "genres": ", ".join(item.get("Genres", [])),   # list → string
-            "critic_rating": item.get("CriticRating"),
-            "official_rating": item.get("OfficialRating"),
-        })
+        raw_meta = {
+            "title": title,                          # str
+            "year": int(year_from) if year_from else 0,   # int fallback
+            "genres": ", ".join(item.get("Genres", [])),  # str
+            "critic_rating": item.get("CriticRating"),    # may be None
+            "official_rating": item.get("OfficialRating") # may be None
+        }
 
-
+        metadatas.append(clean_metadata(raw_meta))
     return documents, ids, metadatas
 
 # Absolute path to ~/jellyseek/movie_summary.json
