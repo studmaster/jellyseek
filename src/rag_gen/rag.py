@@ -174,8 +174,9 @@ def query_ollama(prompt):
 
 def generate_search_query(original_query: str) -> str:
     """Generate an optimized search query from the original user query"""
-    prompt = f"""Convert the following question into a clear, concise search query 
-    that would help find relevant movie information. Focus on key terms and concepts.
+    prompt = f"""As an AI assistant using {generation_model}, help convert the following question 
+    into a search query optimized for {embedding_model} embeddings. The query should be clear, 
+    concise and focus on key terms that will help find relevant movie information. reply only with the prompt used for {embedding_model} embeddings.
     
     Question: {original_query}
     
@@ -186,7 +187,8 @@ def generate_search_query(original_query: str) -> str:
 
 def generate_final_response(original_query: str, context: str) -> str:
     """Generate final response using original query and retrieved context"""
-    prompt = f"""Based on the following movie information, answer the original question.
+    prompt = f"""As an AI assistant using {generation_model}, analyze the following movie information 
+    retrieved using {embedding_model} embeddings and answer the original question.
     Be specific and reference relevant details from the context.
     
     Context: {context}
