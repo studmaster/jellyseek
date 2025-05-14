@@ -43,49 +43,60 @@ collection = chroma_client.get_or_create_collection(
     embedding_function=embedding  # Use the custom embedding function
 )
 
-# Function to add documents to the ChromaDB collection
+from collections import OrderedDict
+import re, unicodedata, uuid
+
+def slug(s: str) -> str:
+    """lower-case, accent-fold, replace non-alphanum with underscores"""
+    s = unicodedata.normalize("NFKD", s).encode("ascii", "ignore").decode()
+    return re.sub(r"[^a-z0-9]+", "_", s.lower()).strip("_")
+
 def load_movie_json(json_file: Path):
-    """
-    Parse movie_summary.json and return parallel lists:
-        documents  -> long strings ready for embedding
-        ids        -> unique per-movie IDs
-        metadatas  -> dicts with useful search fields
-    """
     with json_file.open("r", encoding="utf-8") as f:
         data = json.load(f)
 
-    documents, ids, metadatas = [], [], []
-
+    # ---------- DEDUP SECTION ----------
+    unique: "OrderedDict[str, dict]" = OrderedDict()   # keeps first occurrence
     for item in data:
-        title = item.get("Title", "Unknown Title")
-        plot  = item.get("Plot", "")
+        title = item.get("Title", "").strip()
         year  = ""
         if date_str := item.get("PremiereDate"):
             try:
                 year = str(datetime.fromisoformat(date_str.rstrip("Z")).year)
             except ValueError:
                 pass
+        dedup_key = f"{slug(title)}:{year}"
+        unique.setdefault(dedup_key, item)   # ignore later duplicates
+    # -----------------------------------
 
-        genres = ", ".join(item.get("Genres", []))
-        actors = ", ".join(item.get("Actors", [])[:5])  # keep first 5 for brevity
-        tags   = ", ".join(item.get("Tags", []))
+    documents, ids, metadatas = [], [], []
+    for item in unique.values():            # iterate **de-duplicated** list
+        title = item.get("Title", "Unknown Title")
+        plot  = item.get("Plot", "")
+        year  = year_from := ""             # reuse parsed year if you like
 
-        # Build the free-text chunk that will be embedded
+        # harvest year again (or cache during dedup, whichever you prefer)
+        if date_str := item.get("PremiereDate"):
+            try:
+                year_from = str(datetime.fromisoformat(date_str.rstrip("Z")).year)
+            except ValueError:
+                pass
+
         doc_text = (
             f"Title: {title}\n"
-            f"Year: {year}\n"
-            f"Genres: {genres}\n"
-            f"Tags: {tags}\n"
-            f"Actors: {actors}\n"
+            f"Year: {year_from}\n"
+            f"Genres: {', '.join(item.get('Genres', []))}\n"
+            f"Tags: {', '.join(item.get('Tags', []))}\n"
+            f"Actors: {', '.join(item.get('Actors', [])[:5])}\n"
             f"Plot: {plot}"
         )
 
         documents.append(doc_text)
-        ids.append(f"{title}_{year}".replace(" ", "_").lower())
+        ids.append(f"{slug(title)}_{year_from}" or uuid.uuid4().hex)
         metadatas.append(
             {
                 "title": title,
-                "year": year,
+                "year": year_from,
                 "genres": item.get("Genres", []),
                 "critic_rating": item.get("CriticRating"),
                 "official_rating": item.get("OfficialRating"),
@@ -93,7 +104,6 @@ def load_movie_json(json_file: Path):
         )
 
     return documents, ids, metadatas
-
 
 # Absolute path to ~/jellyseek/movie_summary.json
 json_path = Path.home() / "jellyseek" / "movie_summary.json"
