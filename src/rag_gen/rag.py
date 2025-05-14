@@ -7,7 +7,8 @@ from pathlib import Path
 from datetime import datetime
 
 # Define the LLM model to be used
-llm_model = "bge-large"
+embedding_model = "bge-large"
+generation_model = "gemma3:27b-it-qat"
 
 # Configure ChromaDB
 # Initialize the ChromaDB client with persistent storage in the current directory
@@ -30,7 +31,7 @@ class ChromaDBEmbeddingFunction:
 # Initialize the embedding function with Ollama embeddings
 embedding = ChromaDBEmbeddingFunction(
     OllamaEmbeddings(
-        model=llm_model,
+        model=embedding_model,
         base_url="http://100.112.80.41:11434"  # Adjust the base URL as per your Ollama server configuration
     )
 )
@@ -157,7 +158,7 @@ def query_ollama(prompt):
     Returns:
         str: The response from Ollama.
     """
-    llm = OllamaLLM(model=llm_model)
+    llm = OllamaLLM(model=generation_model)
     return llm.invoke(prompt)
 
 # RAG pipeline: Combine ChromaDB and Ollama for Retrieval-Augmented Generation
