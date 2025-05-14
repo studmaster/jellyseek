@@ -5,6 +5,10 @@ import os
 import json
 from pathlib import Path
 from datetime import datetime
+import sys
+from typing import Dict
+
+import requests
 
 # Define the LLM model to be used
 embedding_model = "bge-large"
@@ -184,38 +188,6 @@ def rag_pipeline(query_text):
     response = query_ollama(augmented_prompt)
     return response
 
-def send_prompt(prompt: str) -> None:
-    payload: Dict[str, str] = {"model": MODEL, "prompt": prompt}
 
-    try:
-        with requests.post(API_URL, json=payload, stream=True, timeout=60) as r:
-            r.raise_for_status()
-            buffer = []
-            for line in r.iter_lines(decode_unicode=True, delimiter=b"\n"):
-                if not line:
-                    continue  # skip keep-alives / blanks
-                try:
-                    data = json.loads(line)
-                    text_fragment = data.get("response", "")
-                    buffer.append(text_fragment)
-                    # Print incrementally for a live feel; flush ensures immediate output.
-                    print(text_fragment, end="", flush=True)
-                    if data.get("done"):
-                        break
-                except json.JSONDecodeError:
-                    # Ignore malformed lines rather than crashing.
-                    continue
-            print()  # final newline after completion
-    except (requests.RequestException, KeyboardInterrupt) as exc:
-        sys.stderr.write(f"\n[ERROR] {exc}\n")
-        sys.exit(1)
-
-
-if __name__ == "__main__":
-    try:
-        user_prompt = input("Enter your prompt: ").strip()
-        if not user_prompt:
-            sys.exit("Prompt cannot be empty.")
-        rag_pipeline(user_prompt)
-    except KeyboardInterrupt:
-        print("\nCancelled by user.")
+result = rag_pipeline(input("Enter your prompt: ").strip())
+print(result)
