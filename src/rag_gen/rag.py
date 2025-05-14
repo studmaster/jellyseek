@@ -73,7 +73,7 @@ def load_movie_json(json_file: Path):
     for item in unique.values():            # iterate **de-duplicated** list
         title = item.get("Title", "Unknown Title")
         plot  = item.get("Plot", "")
-        year  = year_from := ""             # reuse parsed year if you like
+        year_from = ""             # reuse parsed year if you like
 
         # harvest year again (or cache during dedup, whichever you prefer)
         if date_str := item.get("PremiereDate"):
