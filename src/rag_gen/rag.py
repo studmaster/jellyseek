@@ -172,29 +172,55 @@ def query_ollama(prompt):
     llm = OllamaLLM(model=generation_model)
     return llm.invoke(prompt)
 
-# RAG pipeline: Combine ChromaDB and Ollama for Retrieval-Augmented Generation
-def rag_pipeline(query_text):
-    """
-    Perform Retrieval-Augmented Generation (RAG) by combining ChromaDB and Ollama.
+def generate_search_query(original_query: str) -> str:
+    """Generate an optimized search query from the original user query"""
+    prompt = f"""Convert the following question into a clear, concise search query 
+    that would help find relevant movie information. Focus on key terms and concepts.
     
-    Args:
-        query_text (str): The input query.
+    Question: {original_query}
     
-    Returns:
-        str: The generated response from Ollama augmented with retrieved context.
+    Search query:"""
+    
+    llm = OllamaLLM(model=generation_model)
+    return llm.invoke(prompt).strip()
+
+def generate_final_response(original_query: str, context: str) -> str:
+    """Generate final response using original query and retrieved context"""
+    prompt = f"""Based on the following movie information, answer the original question.
+    Be specific and reference relevant details from the context.
+    
+    Context: {context}
+    
+    Original Question: {original_query}
+    
+    Answer:"""
+    
+    llm = OllamaLLM(model=generation_model)
+    return llm.invoke(prompt)
+
+def rag_pipeline(query_text: str):
     """
-    # Step 1: Retrieve relevant documents from ChromaDB
-    retrieved_docs, metadata = query_chromadb(query_text)
+    Enhanced RAG pipeline with three-step process:
+    1. Generate optimized search query
+    2. Retrieve relevant documents
+    3. Generate final response
+    """
+    # Step 1: Generate optimized search query
+    search_query = generate_search_query(query_text)
+    print("######## Generated Search Query ########")
+    print(search_query)
+    
+    # Step 2: Retrieve relevant documents using the optimized query
+    retrieved_docs, metadata = query_chromadb(search_query)
     context = " ".join(retrieved_docs[0]) if retrieved_docs else "No relevant documents found."
-
-    # Step 2: Send the query along with the context to Ollama
-    augmented_prompt = f"Context: {context}\n\nQuestion: {query_text}\nAnswer:"
-    print("######## Augmented Prompt ########")
-    print(augmented_prompt)
-
-    response = query_ollama(augmented_prompt)
+    print("######## Retrieved Context ########")
+    print(context)
+    
+    # Step 3: Generate final response using original query and context
+    response = generate_final_response(query_text, context)
     return response
 
-
-result = rag_pipeline(input("Enter your prompt: ").strip())
+user_query = input("Enter your question about movies: ").strip()
+result = rag_pipeline(user_query)
+print("\n######## Final Response ########")
 print(result)
