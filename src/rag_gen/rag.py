@@ -130,7 +130,7 @@ documents, doc_ids, metadatas = load_movie_json(json_path)
 collection.add(documents=documents, ids=doc_ids, metadatas=metadatas)
 
 # Function to query the ChromaDB collection
-def query_chromadb(query_text, n_results=1):
+def query_chromadb(query_text, n_results=10):
     """
     Query the ChromaDB collection for relevant documents.
     
@@ -184,5 +184,38 @@ def rag_pipeline(query_text):
     response = query_ollama(augmented_prompt)
     return response
 
-result = rag_pipeline("Tell me about Wolverine’s trip to Japan.")
-print(result)
+def send_prompt(prompt: str) -> None:
+    payload: Dict[str, str] = {"model": MODEL, "prompt": prompt}
+
+    try:
+        with requests.post(API_URL, json=payload, stream=True, timeout=60) as r:
+            r.raise_for_status()
+            buffer = []
+            for line in r.iter_lines(decode_unicode=True, delimiter=b"\n"):
+                if not line:
+                    continue  # skip keep-alives / blanks
+                try:
+                    data = json.loads(line)
+                    text_fragment = data.get("response", "")
+                    buffer.append(text_fragment)
+                    # Print incrementally for a live feel; flush ensures immediate output.
+                    print(text_fragment, end="", flush=True)
+                    if data.get("done"):
+                        break
+                except json.JSONDecodeError:
+                    # Ignore malformed lines rather than crashing.
+                    continue
+            print()  # final newline after completion
+    except (requests.RequestException, KeyboardInterrupt) as exc:
+        sys.stderr.write(f"\n[ERROR] {exc}\n")
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    try:
+        user_prompt = input("Enter your prompt: ").strip()
+        if not user_prompt:
+            sys.exit("Prompt cannot be empty.")
+        rag_pipeline(user_prompt)
+    except KeyboardInterrupt:
+        print("\nCancelled by user.")
