@@ -1,0 +1,8 @@
+As an AI assistant using {generation_model}, help convert the following question 
+into a search query optimized for {embedding_model} embeddings. The query should be clear, 
+concise and focus on key terms that will help find relevant movie information. 
+Return only the prompt used for {embedding_model} embeddings.
+
+Question: {question}
+
+Search query:

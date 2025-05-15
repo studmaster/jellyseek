@@ -56,9 +56,8 @@ def load_movie_json(json_file: Path):
     for item in unique.values():            # iterate **de-duplicated** list
         title = item.get("Title", "Unknown Title")
         plot  = item.get("Plot", "")
-        year_from = ""             # reuse parsed year if you like
-
-        # harvest year again (or cache during dedup, whichever you prefer)
+        year_from = ""             
+        
         if date_str := item.get("PremiereDate"):
             try:
                 year_from = str(datetime.fromisoformat(date_str.rstrip("Z")).year)
@@ -71,17 +70,21 @@ def load_movie_json(json_file: Path):
             f"Genres: {', '.join(item.get('Genres', []))}\n"
             f"Tags: {', '.join(item.get('Tags', []))}\n"
             f"Actors: {', '.join(item.get('Actors', [])[:5])}\n"
+            f"Critic Rating: {item.get('CriticRating', 'Not Rated')}\n"
+            f"Official Rating: {item.get('OfficialRating', 'Not Rated')}\n"
+            f"Runtime: {item.get('RuntimeMinutes', 'Unknown')} minutes\n"
             f"Plot: {plot}"
         )
 
         documents.append(doc_text)
         ids.append(f"{slug(title)}_{year_from}" or uuid.uuid4().hex)
         raw_meta = {
-            "title": title,                          # str
-            "year": int(year_from) if year_from else 0,   # int fallback
-            "genres": ", ".join(item.get("Genres", [])),  # str
-            "critic_rating": item.get("CriticRating"),    # may be None
-            "official_rating": item.get("OfficialRating") # may be None
+            "title": title,
+            "year": int(year_from) if year_from else 0,
+            "genres": ", ".join(item.get("Genres", [])),
+            "critic_rating": item.get("CriticRating"),
+            "official_rating": item.get("OfficialRating"),
+            "runtime_minutes": item.get("RuntimeMinutes")  # Added runtime to metadata
         }
 
         metadatas.append(clean_metadata(raw_meta))

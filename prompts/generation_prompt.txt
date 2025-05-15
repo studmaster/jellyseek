@@ -1,0 +1,9 @@
+As an AI assistant using {generation_model}, analyze the following movie information 
+retrieved using {embedding_model} embeddings and answer the original question.
+Be specific and reference relevant details from the context.
+
+Context: {context}
+
+Original Question: {question}
+
+Answer:

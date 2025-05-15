@@ -2,7 +2,7 @@ from langchain_ollama import OllamaLLM, OllamaEmbeddings
 import chromadb
 import os
 from typing import Tuple, List, Dict
-from config import OLLAMA_BASE_URL, EMBEDDING_MODEL, GENERATION_MODEL
+from config import OLLAMA_BASE_URL, EMBEDDING_MODEL, GENERATION_MODEL, EMBEDDING_PROMPT, GENERATION_PROMPT
 
 # Model configurations
 embedding_model = EMBEDDING_MODEL
@@ -27,30 +27,32 @@ def query_chromadb(collection, query_text: str, n_results: int = 10) -> Tuple[Li
     )
     return results["documents"], results["metadatas"]
 
+def read_prompt_file(filename: str) -> str:
+    """Read prompt template from file"""
+    with open(filename, 'r') as file:
+        return file.read().strip()
+
 def generate_search_query(original_query: str) -> str:
     """Generate an optimized search query from the original user query"""
-    prompt = f"""As an AI assistant using {generation_model}, help convert the following question 
-    into a search query optimized for {embedding_model} embeddings. The query should be clear, 
-    concise and focus on key terms that will help find relevant movie information. Return only the prompt used for {embedding_model} embeddings.
-    
-    Question: {original_query}
-    
-    Search query:"""
+    template = read_prompt_file(EMBEDDING_PROMPT)
+    prompt = template.format(
+        generation_model=generation_model,
+        embedding_model=embedding_model,
+        question=original_query
+    )
     
     llm = OllamaLLM(model=generation_model, base_url=ollama_url)
     return llm.invoke(prompt).strip()
 
 def generate_final_response(original_query: str, context: str) -> str:
     """Generate final response using original query and retrieved context"""
-    prompt = f"""As an AI assistant using {generation_model}, analyze the following movie information 
-    retrieved using {embedding_model} embeddings and answer the original question.
-    Be specific and reference relevant details from the context.
-    
-    Context: {context}
-    
-    Original Question: {original_query}
-    
-    Answer:"""
+    template = read_prompt_file(GENERATION_PROMPT)
+    prompt = template.format(
+        generation_model=generation_model,
+        embedding_model=embedding_model,
+        context=context,
+        question=original_query
+    )
     
     llm = OllamaLLM(model=generation_model, base_url=ollama_url)
     return llm.invoke(prompt)
