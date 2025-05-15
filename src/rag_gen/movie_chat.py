@@ -81,18 +81,18 @@ def chat_loop():
             
         # Step 1: Generate optimized search query
         search_query = generate_search_query(user_query)
-        print("\n######## Generated Search Query ########")
-        print(search_query)
+        #print("\n######## Generated Search Query ########")
+        #print(search_query)
         
         # Step 2: Retrieve relevant documents
         retrieved_docs, metadata = query_chromadb(collection, search_query)
         context = " ".join(retrieved_docs[0]) if retrieved_docs else "No relevant documents found."
-        print("\n######## Retrieved Context ########")
-        print(context)
+        #print("\n######## Retrieved Context ########")
+        #print(context)
         
         # Step 3: Generate final response
         response = generate_final_response(user_query, context)
-        print("\n######## Final Response ########")
+        #print("\n######## Final Response ########")
         print(response)
 
 if __name__ == "__main__":
