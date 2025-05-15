@@ -82,7 +82,7 @@ def check_for_updates() -> bool:
         print("Failed to fetch items from Jellyfin")
         return False
         
-    # Load existing items
+    # Load existing items if they exist
     existing_file = Path(JELLYFIN_DATA_PATH) / 'jellyfin_items.json'
     if existing_file.exists():
         with open(existing_file, 'r', encoding='utf-8') as f:
@@ -97,7 +97,9 @@ def check_for_updates() -> bool:
             return False
             
         print(f"Found {new_count - existing_count} new items!")
-    
+    else:
+        print("No existing export found. Creating new database...")
+        
     # Save new items and regenerate database
     save_items(new_items)
     print("Saved new items, regenerating database...")
