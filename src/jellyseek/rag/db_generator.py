@@ -161,17 +161,13 @@ def generate_database(force_update: bool = False):
             if not force_update:
                 doc_count = collection.count()
                 print(f"\nFound existing database with {doc_count} documents.")
-                print("Options:")
-                print("1. Delete existing database and create new one")
-                print("2. Keep existing database and exit")
-                
                 while True:
-                    choice = input("\nEnter your choice (1 or 2): ").strip()
-                    if choice in ['1', '2']:
+                    choice = input("Do you want to delete the existing database and create a new one? (y/n): ").strip().lower()
+                    if choice in ['y', 'n']:
                         break
-                    print("Invalid choice. Please enter 1 or 2.")
+                    print("Invalid choice. Please enter 'y' or 'n'.")
                 
-                if choice == '2':
+                if choice == 'n':
                     print("Keeping existing database. Exiting...")
                     return
             
