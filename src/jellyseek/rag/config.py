@@ -20,33 +20,17 @@ GENERATION_MODEL = os.getenv("GENERATION_MODEL", "gemma3:27b-it-qat")
 EMBEDDING_PROMPT = os.path.join(PROJECT_ROOT, os.getenv("embeddings_prompt", "prompts/embeddings_prompt.txt"))
 GENERATION_PROMPT = os.path.join(PROJECT_ROOT, os.getenv("generation_prompt", "prompts/generation_prompt.txt"))
 
-# Get default ChromaDB path (using XDG base directory specification for Linux)
-DEFAULT_CHROMADB_PATH = os.path.join(USER_HOME, ".local", "share", "jellyseek", "chromadb")
+# Get default paths with proper home directory expansion
+DEFAULT_CHROMADB_PATH = os.path.expanduser("~/.local/share/jellyseek/chromadb")
+DEFAULT_JELLYFIN_DATA_PATH = os.path.expanduser("~/.local/share/jellyseek/data")
 
-# ChromaDB Configuration - replace USER with actual username if present
-raw_path = os.getenv("CHROMADB_PATH", DEFAULT_CHROMADB_PATH)
-CHROMADB_PATH = raw_path.replace("/home/USER", USER_HOME)
+# Get configured paths and expand user directory if needed
+CHROMADB_PATH = os.path.expanduser(os.getenv("CHROMADB_PATH", DEFAULT_CHROMADB_PATH))
+JELLYFIN_DATA_PATH = os.path.expanduser(os.getenv("JELLYFIN_DATA_PATH", DEFAULT_JELLYFIN_DATA_PATH))
 
-# Create directory if it doesn't exist
-try:
-    os.makedirs(CHROMADB_PATH, exist_ok=True)
-except PermissionError:
-    print(f"Warning: Cannot create directory at {CHROMADB_PATH}. Check permissions.")
-    CHROMADB_PATH = DEFAULT_CHROMADB_PATH
-    os.makedirs(CHROMADB_PATH, exist_ok=True)
-
-# Get default data path for Jellyfin exports
-DEFAULT_JELLYFIN_DATA_PATH = os.path.join(USER_HOME, ".local", "share", "jellyseek", "data")
-raw_jellyfin_path = os.getenv("JELLYFIN_DATA_PATH", DEFAULT_JELLYFIN_DATA_PATH)
-JELLYFIN_DATA_PATH = os.path.expanduser(raw_jellyfin_path)
-
-# Create Jellyfin data directory if it doesn't exist
-try:
-    os.makedirs(JELLYFIN_DATA_PATH, exist_ok=True)
-except PermissionError:
-    print(f"Warning: Cannot create directory at {JELLYFIN_DATA_PATH}. Check permissions.")
-    JELLYFIN_DATA_PATH = DEFAULT_JELLYFIN_DATA_PATH
-    os.makedirs(JELLYFIN_DATA_PATH, exist_ok=True)
+# Create directories if they don't exist
+os.makedirs(CHROMADB_PATH, exist_ok=True)
+os.makedirs(JELLYFIN_DATA_PATH, exist_ok=True)
 
 # Validate required environment variables
 if not OLLAMA_BASE_URL:
