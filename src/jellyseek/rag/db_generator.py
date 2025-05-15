@@ -34,45 +34,28 @@ class ChromaDBEmbeddingFunction:
         return self.langchain_embeddings.embed_documents(input)
 
 def load_movie_json(json_file: Path):
-    """
-    Accepts either of the two known Jellyfin exports:
-
-    1. A *flat list* of movie dictionaries  ← what your first script consumes
-       [
-           { "Title": "...", ... },
-           ...
-       ]
-
-    2. A wrapper object with an ``"Items"`` key (original Jellyfin API shape)
-       {
-           "Items": [
-               { "Title": "...", ... },
-               ...
-           ]
-       }
-    """
     try:
         with json_file.open("r", encoding="utf-8") as f:
             raw_data = json.load(f)
 
-        # ── NEW: normalize to a flat list ────────────────────────────────────
+        # Normalize to a flat list
         if isinstance(raw_data, list):
-            data = raw_data                       # already flat
+            data = raw_data
         else:
-            data = raw_data.get("Items", [])      # fallback to old shape
-        # --------------------------------------------------------------------
+            data = raw_data.get("Items", [])
 
         if not data:
             raise ValueError("No movie items found in the JSON file")
 
-        # The rest of the function is unchanged ― filtering, de-dup, etc.
-        required_fields = ["Title", "Plot"]  # keep your reduced field set
+        print(f"Found {len(data)} total items")
+
+        # Filter movies - only require Title
         filtered_data = [
             item for item in data
-            if all(item.get(field) not in (None, "") for field in required_fields)
+            if item.get("Title") and isinstance(item.get("Title"), str)
         ]
-        if not filtered_data:
-            raise ValueError("No valid movies found after filtering")
+
+        print(f"Found {len(filtered_data)} items with valid titles")
 
         unique: "OrderedDict[str, dict]" = OrderedDict()
         for item in filtered_data:
@@ -85,10 +68,16 @@ def load_movie_json(json_file: Path):
                     pass
             unique.setdefault(f"{slug(title)}:{year}", item)
 
+        print(f"Found {len(unique)} unique movies after deduplication")
+
         documents, ids, metadatas = [], [], []
         for item in unique.values():
-            title = item.get("Title", "Unknown Title")
-            plot = item.get("Plot", "")
+            title = item.get("Title", "").strip()
+            if not title:  # Skip items without titles
+                continue
+
+            # Get optional fields with defaults
+            plot = item.get("Plot", "No plot available")
             year_from = ""
             if date_str := item.get("PremiereDate"):
                 try:
@@ -98,10 +87,10 @@ def load_movie_json(json_file: Path):
 
             doc_text = (
                 f"Title: {title}\n"
-                f"Year: {year_from}\n"
-                f"Genres: {', '.join(item.get('Genres', []))}\n"
-                f"Tags: {', '.join(item.get('Tags', []))}\n"
-                f"Actors: {', '.join(item.get('Actors', [])[:5])}\n"
+                f"Year: {year_from or 'Unknown'}\n"
+                f"Genres: {', '.join(item.get('Genres', []) or ['Unknown'])}\n"
+                f"Tags: {', '.join(item.get('Tags', []) or ['None'])}\n"
+                f"Actors: {', '.join((item.get('Actors', []) or [])[:5])}\n"
                 f"Critic Rating: {item.get('CriticRating', 'Not Rated')}\n"
                 f"Official Rating: {item.get('OfficialRating', 'Not Rated')}\n"
                 f"Runtime: {item.get('RuntimeMinutes', 'Unknown')} minutes\n"
@@ -120,12 +109,12 @@ def load_movie_json(json_file: Path):
             }
             metadatas.append(clean_metadata(raw_meta))
 
+        print(f"Successfully processed {len(documents)} movies")
+        return documents, ids, metadatas
+
     except Exception as e:
         print(f"Error processing movie data: {e}")
         return [], [], []
-
-    return documents, ids, metadatas
-
 
 def slug(s: str) -> str:
     """lower-case, accent-fold, replace non-alphanum with underscores"""
