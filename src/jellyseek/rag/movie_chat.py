@@ -134,6 +134,7 @@ def chat_loop():
     
     # Check if collection exists
     try:
+        # Always use get_or_create_collection to ensure consistent collection ID
         collection = chroma_client.get_or_create_collection(
             name=collection_name,
             embedding_function=embedding,
@@ -157,6 +158,12 @@ def chat_loop():
             if not check_for_updates():
                 print("Failed to create database. Exiting...")
                 return
+            
+            # Refresh collection after update
+            collection = chroma_client.get_collection(
+                name=collection_name,
+                embedding_function=embedding
+            )
         else:
             print(f"\nFound existing database with {collection.count()} movies.")
             
@@ -181,16 +188,16 @@ def chat_loop():
                 )
             continue
             
-        # Step 1: Generate optimized search query
+        # Process query
         search_query = generate_search_query(user_query)
-        
-        # Step 2: Retrieve relevant documents
         retrieved_docs, metadata = query_chromadb(collection, search_query)
-        context = " ".join(retrieved_docs[0]) if retrieved_docs else "No relevant documents found."
         
-        # Step 3: Generate final response
-        response = generate_final_response(user_query, context)
-        print(response)
+        if not retrieved_docs:
+            print("No relevant movies found.")
+            continue
+            
+        response = generate_final_response(user_query, "\n\n".join(retrieved_docs))
+        print(f"\nAssistant: {response}")
 
 if __name__ == "__main__":
     chat_loop()
