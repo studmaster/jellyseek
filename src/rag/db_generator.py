@@ -7,9 +7,11 @@ from datetime import datetime
 from typing import Dict
 from collections import OrderedDict
 import re, unicodedata, uuid
+from config import OLLAMA_BASE_URL, EMBEDDING_MODEL, GENERATION_MODEL
 
 # Define the embedding model
-embedding_model = "bge-large"
+embedding_model = EMBEDDING_MODEL
+ollama_url = OLLAMA_BASE_URL
 
 # ...existing ChromaDBEmbeddingFunction class...
 class ChromaDBEmbeddingFunction:
@@ -117,7 +119,7 @@ def generate_database():
     embedding = ChromaDBEmbeddingFunction(
         OllamaEmbeddings(
             model=embedding_model,
-            base_url="http://100.112.80.41:11434"
+            base_url=ollama_url
         )
     )
     

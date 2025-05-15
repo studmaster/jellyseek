@@ -2,10 +2,12 @@ from langchain_ollama import OllamaLLM, OllamaEmbeddings
 import chromadb
 import os
 from typing import Tuple, List, Dict
+from config import OLLAMA_BASE_URL, EMBEDDING_MODEL, GENERATION_MODEL
 
 # Model configurations
-embedding_model = "bge-large"
-generation_model = "gemma3:27b-it-qat"
+embedding_model = EMBEDDING_MODEL
+generation_model = GENERATION_MODEL
+ollama_url = OLLAMA_BASE_URL
 
 # Custom embedding function for ChromaDB
 class ChromaDBEmbeddingFunction:
@@ -35,7 +37,7 @@ def generate_search_query(original_query: str) -> str:
     
     Search query:"""
     
-    llm = OllamaLLM(model=generation_model)
+    llm = OllamaLLM(model=generation_model, base_url=ollama_url)
     return llm.invoke(prompt).strip()
 
 def generate_final_response(original_query: str, context: str) -> str:
@@ -50,7 +52,7 @@ def generate_final_response(original_query: str, context: str) -> str:
     
     Answer:"""
     
-    llm = OllamaLLM(model=generation_model)
+    llm = OllamaLLM(model=generation_model, base_url=ollama_url)
     return llm.invoke(prompt)
 
 def chat_loop():
@@ -62,7 +64,7 @@ def chat_loop():
     embedding = ChromaDBEmbeddingFunction(
         OllamaEmbeddings(
             model=embedding_model,
-            base_url="http://100.112.80.41:11434"
+            base_url=ollama_url
         )
     )
     
