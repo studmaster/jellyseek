@@ -92,7 +92,8 @@ def check_for_updates() -> bool:
         # Compare item counts
         new_count = len(new_items.get('Items', []))
         existing_count = len(existing_items.get('Items', []))
-        print(existing_count)
+        print(existing_file)
+        print(f"Existing items: {existing_count}, New items: {new_count}")
         if new_count <= existing_count:
             print("No new items found.")
             return False
