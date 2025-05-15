@@ -6,7 +6,7 @@ from pathlib import Path
 load_dotenv()
 
 # Get project root directory (where .env file is located)
-PROJECT_ROOT = Path(__file__).parent.parent.parent
+PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
 
 # Get user's home directory
 USER_HOME = os.path.expanduser("~")
