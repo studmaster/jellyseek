@@ -132,12 +132,32 @@ def generate_database():
         )
     )
     
-    # Create or get collection
-    collection = chroma_client.get_or_create_collection(
-        name="movies_rag",
-        metadata={"description": "A collection for movies rag"},
-        embedding_function=embedding
-    )
+    # Check if collection exists
+    collection_name = "movies_rag"
+    try:
+        collection = chroma_client.get_collection(
+            name=collection_name,
+            embedding_function=embedding
+        )
+        print(f"Found existing collection with {collection.count()} documents")
+        user_input = input("Delete existing collection and recreate? (y/N): ")
+        if user_input.lower() == 'y':
+            chroma_client.delete_collection(collection_name)
+            collection = chroma_client.create_collection(
+                name=collection_name,
+                metadata={"description": "A collection for movies rag"},
+                embedding_function=embedding
+            )
+        else:
+            print("Exiting without changes")
+            return
+    except ValueError:
+        # Collection doesn't exist, create it
+        collection = chroma_client.create_collection(
+            name=collection_name,
+            metadata={"description": "A collection for movies rag"},
+            embedding_function=embedding
+        )
     
     # Load and process movies from configured data path
     json_path = Path(JELLYFIN_DATA_PATH) / 'jellyfin_items.json'
