@@ -34,49 +34,62 @@ class ChromaDBEmbeddingFunction:
         return self.langchain_embeddings.embed_documents(input)
 
 def load_movie_json(json_file: Path):
+    """
+    Accepts either of the two known Jellyfin exports:
+
+    1. A *flat list* of movie dictionaries  ← what your first script consumes
+       [
+           { "Title": "...", ... },
+           ...
+       ]
+
+    2. A wrapper object with an ``"Items"`` key (original Jellyfin API shape)
+       {
+           "Items": [
+               { "Title": "...", ... },
+               ...
+           ]
+       }
+    """
     try:
         with json_file.open("r", encoding="utf-8") as f:
             raw_data = json.load(f)
-        
-        # Ensure we're working with the Items list
-        data = raw_data.get('Items', [])
+
+        # ── NEW: normalize to a flat list ────────────────────────────────────
+        if isinstance(raw_data, list):
+            data = raw_data                       # already flat
+        else:
+            data = raw_data.get("Items", [])      # fallback to old shape
+        # --------------------------------------------------------------------
+
         if not data:
-            raise ValueError("No items found in the JSON file")
+            raise ValueError("No movie items found in the JSON file")
 
-        print(f"Processing {len(data)} items from Jellyfin...")
-
-        # Filter out movies with any null or missing categories
-        required_fields = ["Title", "Plot"]  # Reduced required fields
+        # The rest of the function is unchanged ― filtering, de-dup, etc.
+        required_fields = ["Title", "Plot"]  # keep your reduced field set
         filtered_data = [
             item for item in data
             if all(item.get(field) not in (None, "") for field in required_fields)
         ]
-
         if not filtered_data:
             raise ValueError("No valid movies found after filtering")
 
-        print(f"Found {len(filtered_data)} valid movies after filtering")
-
-        # ---------- DEDUP SECTION ----------
-        unique: "OrderedDict[str, dict]" = OrderedDict()   # keeps first occurrence
+        unique: "OrderedDict[str, dict]" = OrderedDict()
         for item in filtered_data:
             title = item.get("Title", "").strip()
-            year  = ""
+            year = ""
             if date_str := item.get("PremiereDate"):
                 try:
                     year = str(datetime.fromisoformat(date_str.rstrip("Z")).year)
                 except ValueError:
                     pass
-            dedup_key = f"{slug(title)}:{year}"
-            unique.setdefault(dedup_key, item)   # ignore later duplicates
-        # -----------------------------------
+            unique.setdefault(f"{slug(title)}:{year}", item)
 
         documents, ids, metadatas = [], [], []
-        for item in unique.values():            # iterate **de-duplicated** list
+        for item in unique.values():
             title = item.get("Title", "Unknown Title")
-            plot  = item.get("Plot", "")
-            year_from = ""             
-            
+            plot = item.get("Plot", "")
+            year_from = ""
             if date_str := item.get("PremiereDate"):
                 try:
                     year_from = str(datetime.fromisoformat(date_str.rstrip("Z")).year)
@@ -96,26 +109,21 @@ def load_movie_json(json_file: Path):
             )
 
             documents.append(doc_text)
-            ids.append(f"{slug(title)}_{year_from}" or uuid.uuid4().hex)
+            ids.append(slug(title) + (f"_{year_from}" if year_from else "_" + uuid.uuid4().hex))
             raw_meta = {
                 "title": title,
                 "year": int(year_from) if year_from else 0,
                 "genres": ", ".join(item.get("Genres", [])),
                 "critic_rating": item.get("CriticRating"),
                 "official_rating": item.get("OfficialRating"),
-                "runtime_minutes": item.get("RuntimeMinutes")  # Added runtime to metadata
+                "runtime_minutes": item.get("RuntimeMinutes")
             }
-
             metadatas.append(clean_metadata(raw_meta))
+
     except Exception as e:
-        print(f"Error processing movie data: {str(e)}")
+        print(f"Error processing movie data: {e}")
         return [], [], []
 
-    if not documents:
-        print("No valid documents generated")
-        return [], [], []
-
-    print(f"Successfully processed {len(documents)} movies")
     return documents, ids, metadatas
 
 
