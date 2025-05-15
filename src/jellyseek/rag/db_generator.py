@@ -38,28 +38,17 @@ def load_movie_json(json_file: Path):
         with json_file.open("r", encoding="utf-8") as f:
             raw_data = json.load(f)
 
-        # Normalize to a flat list
-        if isinstance(raw_data, list):
-            data = raw_data
-        else:
-            data = raw_data.get("Items", [])
-
+        # Get Items array from response
+        data = raw_data.get("Items", [])
         if not data:
             raise ValueError("No movie items found in the JSON file")
 
         print(f"Found {len(data)} total items")
 
-        # Filter movies - only require Title
-        filtered_data = [
-            item for item in data
-            if item.get("Title") and isinstance(item.get("Title"), str)
-        ]
-
-        print(f"Found {len(filtered_data)} items with valid titles")
-
+        # Create unique movie entries
         unique: "OrderedDict[str, dict]" = OrderedDict()
-        for item in filtered_data:
-            title = item.get("Title", "").strip()
+        for item in data:
+            title = item["Title"].strip()  # We know Title exists
             year = ""
             if date_str := item.get("PremiereDate"):
                 try:
@@ -72,11 +61,7 @@ def load_movie_json(json_file: Path):
 
         documents, ids, metadatas = [], [], []
         for item in unique.values():
-            title = item.get("Title", "").strip()
-            if not title:  # Skip items without titles
-                continue
-
-            # Get optional fields with defaults
+            title = item["Title"].strip()
             plot = item.get("Plot", "No plot available")
             year_from = ""
             if date_str := item.get("PremiereDate"):
