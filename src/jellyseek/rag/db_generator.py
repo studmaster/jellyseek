@@ -45,25 +45,42 @@ def load_movie_json(json_file: Path):
 
         print(f"Found {len(data)} total items")
 
-        # Create unique movie entries
+        # Debug first few items
+        print("\nDebug: First item structure:")
+        if data:
+            print(json.dumps(data[0], indent=2))
+
+        # Create unique movie entries with safer title access
         unique: "OrderedDict[str, dict]" = OrderedDict()
         for item in data:
-            title = item["Title"].strip()  # We know Title exists
+            # Safely get title with debug info
+            if not isinstance(item, dict):
+                print(f"Skipping non-dict item: {type(item)}")
+                continue
+                
+            title = item.get("Title")
+            if not title:
+                print(f"Skipping item without title: {item}")
+                continue
+
             year = ""
             if date_str := item.get("PremiereDate"):
                 try:
                     year = str(datetime.fromisoformat(date_str.rstrip("Z")).year)
                 except ValueError:
                     pass
-            unique.setdefault(f"{slug(title)}:{year}", item)
+            
+            key = f"{slug(str(title))}:{year}"
+            unique[key] = item
 
-        print(f"Found {len(unique)} unique movies after deduplication")
+        print(f"\nFound {len(unique)} unique movies after deduplication")
 
         documents, ids, metadatas = [], [], []
         for item in unique.values():
-            title = item["Title"].strip()
-            plot = item.get("Plot", "No plot available")
+            title = str(item.get("Title", "Unknown")).strip()
+            plot = str(item.get("Plot", "No plot available"))
             year_from = ""
+            
             if date_str := item.get("PremiereDate"):
                 try:
                     year_from = str(datetime.fromisoformat(date_str.rstrip("Z")).year)
@@ -73,9 +90,9 @@ def load_movie_json(json_file: Path):
             doc_text = (
                 f"Title: {title}\n"
                 f"Year: {year_from or 'Unknown'}\n"
-                f"Genres: {', '.join(item.get('Genres', []) or ['Unknown'])}\n"
-                f"Tags: {', '.join(item.get('Tags', []) or ['None'])}\n"
-                f"Actors: {', '.join((item.get('Actors', []) or [])[:5])}\n"
+                f"Genres: {', '.join(map(str, item.get('Genres', []) or ['Unknown']))}\n"
+                f"Tags: {', '.join(map(str, item.get('Tags', []) or ['None']))}\n"
+                f"Actors: {', '.join(map(str, (item.get('Actors', []) or [])[:5]))}\n"
                 f"Critic Rating: {item.get('CriticRating', 'Not Rated')}\n"
                 f"Official Rating: {item.get('OfficialRating', 'Not Rated')}\n"
                 f"Runtime: {item.get('RuntimeMinutes', 'Unknown')} minutes\n"
@@ -83,11 +100,12 @@ def load_movie_json(json_file: Path):
             )
 
             documents.append(doc_text)
-            ids.append(slug(title) + (f"_{year_from}" if year_from else "_" + uuid.uuid4().hex))
+            ids.append(f"{slug(title)}_{year_from or uuid.uuid4().hex}")
+            
             raw_meta = {
                 "title": title,
                 "year": int(year_from) if year_from else 0,
-                "genres": ", ".join(item.get("Genres", [])),
+                "genres": ", ".join(map(str, item.get("Genres", []))),
                 "critic_rating": item.get("CriticRating"),
                 "official_rating": item.get("OfficialRating"),
                 "runtime_minutes": item.get("RuntimeMinutes")
@@ -99,6 +117,8 @@ def load_movie_json(json_file: Path):
 
     except Exception as e:
         print(f"Error processing movie data: {e}")
+        import traceback
+        traceback.print_exc()
         return [], [], []
 
 def slug(s: str) -> str:
