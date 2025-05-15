@@ -13,6 +13,7 @@ from jellyseek.rag.config import (
 )
 from jellyseek.jellyfin_export.main import fetch_items, save_items
 from jellyseek.rag.db_generator import generate_database
+from jellyseek.rag.commands import create_command_handler
 import json
 from pathlib import Path
 
@@ -136,6 +137,9 @@ def chat_loop():
         )
     )
     
+    # Initialize command handler
+    cmd_handler = create_command_handler()
+    
     # Check if collection exists
     try:
         # Always use get_or_create_collection to ensure consistent collection ID
@@ -145,7 +149,6 @@ def chat_loop():
             metadata={"description": "Movies RAG collection"}
         )
         
-        # If collection exists but is empty, ask to create database
         if collection.count() == 0:
             print("\nDatabase exists but contains no movies!")
             while True:
@@ -159,40 +162,40 @@ def chat_loop():
                 return
                 
             print("\nFetching movies from Jellyfin...")
-            if not check_for_updates():
+            if not cmd_handler.handle("/update",
+                collection=collection,
+                embedding=embedding,
+                collection_name=collection_name,
+                chroma_client=chroma_client):
                 print("Failed to create database. Exiting...")
                 return
-            
-            # Refresh collection after update
-            collection = chroma_client.get_collection(
-                name=collection_name,
-                embedding_function=embedding
-            )
-        else:
-            print(f"\nFound existing database with {collection.count()} movies.")
+        
+        print(f"\nFound existing database with {collection.count()} movies.")
             
     except Exception as e:
         print(f"\nError accessing database: {str(e)}")
         print("Cannot proceed. Exiting...")
         return
     
-    print("\nMovie Chat Assistant Ready! (Type '/quit' to exit, '/update' to check for new movies)")
+    print("\nMovie Chat Assistant Ready! (Type '/help' for available commands)")
     
     while True:
         user_query = input("\nEnter your question about movies: ").strip()
         
-        if user_query.lower() == '/quit':
-            break
-        elif user_query.lower() == '/update':
-            if check_for_updates():
-                # Refresh collection after update
-                collection = chroma_client.get_collection(
-                    name=collection_name,
-                    embedding_function=embedding
-                )
-            continue
-            
-        # Process query
+        if user_query.startswith('/'):
+            result = cmd_handler.handle(
+                user_query,
+                collection=collection,
+                embedding=embedding,
+                collection_name=collection_name,
+                chroma_client=chroma_client
+            )
+            if result is not None:
+                if result and user_query == '/quit':
+                    break
+                continue
+        
+        # Process regular query
         search_query = generate_search_query(user_query)
         retrieved_docs, metadata = query_chromadb(collection, search_query)
         
