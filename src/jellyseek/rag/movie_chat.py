@@ -2,7 +2,7 @@ from langchain_ollama import OllamaLLM, OllamaEmbeddings
 import chromadb
 import os
 from typing import Tuple, List, Dict
-from config import (
+from jellyseek.rag.config import (
     OLLAMA_BASE_URL, 
     EMBEDDING_MODEL, 
     GENERATION_MODEL, 
@@ -11,8 +11,8 @@ from config import (
     CHROMADB_PATH,
     JELLYFIN_DATA_PATH
 )
-from jellyseek.jellyfin_export.main import fetch_items, save_items  # Updated import
-from .db_generator import generate_database
+from jellyseek.jellyfin_export.main import fetch_items, save_items
+from jellyseek.rag.db_generator import generate_database
 import json
 from pathlib import Path
 
