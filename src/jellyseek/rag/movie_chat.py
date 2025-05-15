@@ -78,34 +78,41 @@ def check_for_updates() -> bool:
     
     # Fetch new items from Jellyfin
     new_items = fetch_items()
-    if not new_items:
-        print("Failed to fetch items from Jellyfin")
+    if not new_items or 'Items' not in new_items:
+        print("Failed to fetch valid items from Jellyfin")
         return False
         
     # Load existing items if they exist
     existing_file = Path(JELLYFIN_DATA_PATH) / 'jellyfin_items.json'
     if existing_file.exists():
-        with open(existing_file, 'r', encoding='utf-8') as f:
-            existing_items = json.load(f)
+        try:
+            with open(existing_file, 'r', encoding='utf-8') as f:
+                existing_items = json.load(f)
+                
+            # Compare item counts
+            new_count = len(new_items.get('Items', []))
+            existing_count = len(existing_items.get('Items', []))
             
-        # Compare item counts
-        new_count = len(new_items.get('Items', []))
-        existing_count = len(existing_items.get('Items', []))
-        print(existing_file)
-        print(f"Existing items: {existing_count}, New items: {new_count}")
-        if new_count <= existing_count:
-            print("No new items found.")
-            return False
+            if new_count <= existing_count:
+                print("No new items found.")
+                return False
+                
+            print(f"Found {new_count - existing_count} new items!")
+        except json.JSONDecodeError:
+            print("Existing export file is corrupted. Creating new database...")
             
-        print(f"Found {new_count - existing_count} new items!")
     else:
         print("No existing export found. Creating new database...")
         
     # Save new items and regenerate database
-    save_items(new_items)
-    print("Saved new items, regenerating database...")
-    generate_database(force_update=True)
-    return True
+    try:
+        save_items(new_items)
+        print("Saved new items, regenerating database...")
+        generate_database(force_update=True)
+        return True
+    except Exception as e:
+        print(f"Error creating database: {str(e)}")
+        return False
 
 def chat_loop():
     """Main chat loop"""
