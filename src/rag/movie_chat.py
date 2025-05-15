@@ -83,11 +83,11 @@ def chat_loop():
         embedding_function=embedding
     )
     
-    print("Movie Chat Assistant Ready! (Type 'quit' to exit)")
+    print("Movie Chat Assistant Ready! (Type '/quit' to exit)")
     
     while True:
         user_query = input("\nEnter your question about movies: ").strip()
-        if user_query.lower() in ('quit', 'exit'):
+        if user_query.lower() == '/quit':
             break
             
         # Step 1: Generate optimized search query

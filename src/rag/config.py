@@ -35,6 +35,19 @@ except PermissionError:
     CHROMADB_PATH = DEFAULT_CHROMADB_PATH
     os.makedirs(CHROMADB_PATH, exist_ok=True)
 
+# Get default data path for Jellyfin exports
+DEFAULT_JELLYFIN_DATA_PATH = os.path.join(USER_HOME, ".local", "share", "jellyseek", "data")
+raw_jellyfin_path = os.getenv("JELLYFIN_DATA_PATH", DEFAULT_JELLYFIN_DATA_PATH)
+JELLYFIN_DATA_PATH = os.path.expanduser(raw_jellyfin_path)
+
+# Create Jellyfin data directory if it doesn't exist
+try:
+    os.makedirs(JELLYFIN_DATA_PATH, exist_ok=True)
+except PermissionError:
+    print(f"Warning: Cannot create directory at {JELLYFIN_DATA_PATH}. Check permissions.")
+    JELLYFIN_DATA_PATH = DEFAULT_JELLYFIN_DATA_PATH
+    os.makedirs(JELLYFIN_DATA_PATH, exist_ok=True)
+
 # Validate required environment variables
 if not OLLAMA_BASE_URL:
     raise ValueError("OLLAMA_BASE_URL must be set in the environment variables")

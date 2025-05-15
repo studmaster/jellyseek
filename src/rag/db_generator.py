@@ -7,7 +7,13 @@ from datetime import datetime
 from typing import Dict
 from collections import OrderedDict
 import re, unicodedata, uuid
-from config import OLLAMA_BASE_URL, EMBEDDING_MODEL, GENERATION_MODEL, CHROMADB_PATH
+from config import (
+    OLLAMA_BASE_URL, 
+    EMBEDDING_MODEL, 
+    GENERATION_MODEL, 
+    CHROMADB_PATH,
+    JELLYFIN_DATA_PATH
+)
 
 # Define the embedding model
 embedding_model = EMBEDDING_MODEL
@@ -133,8 +139,11 @@ def generate_database():
         embedding_function=embedding
     )
     
-    # Load and process movies
-    json_path = Path.home() / "jellyseek" / "movie_summary.json"
+    # Load and process movies from configured data path
+    json_path = Path(JELLYFIN_DATA_PATH) / 'jellyfin_items.json'
+    if not json_path.exists():
+        raise FileNotFoundError(f"Movie data not found at: {json_path}. Please run the jellyfin_export script first.")
+    
     documents, doc_ids, metadatas = load_movie_json(json_path)
     
     # Add to collection
