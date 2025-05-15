@@ -7,7 +7,7 @@ from datetime import datetime
 from typing import Dict
 from collections import OrderedDict
 import re, unicodedata, uuid
-from config import OLLAMA_BASE_URL, EMBEDDING_MODEL, GENERATION_MODEL
+from config import OLLAMA_BASE_URL, EMBEDDING_MODEL, GENERATION_MODEL, CHROMADB_PATH
 
 # Define the embedding model
 embedding_model = EMBEDDING_MODEL
@@ -115,8 +115,8 @@ def clean_metadata(d: dict) -> dict:
 
 def generate_database():
     """Main function to generate the vector database"""
-    # Initialize ChromaDB client
-    chroma_client = chromadb.PersistentClient(path=os.path.join(os.getcwd(), "chroma_db"))
+    # Initialize ChromaDB client with configured path
+    chroma_client = chromadb.PersistentClient(path=CHROMADB_PATH)
     
     # Initialize embedding function
     embedding = ChromaDBEmbeddingFunction(

@@ -1,6 +1,7 @@
 As an AI assistant using {generation_model}, help convert the following question 
 into a search query optimized for {embedding_model} embeddings. The query should be clear, 
-concise and focus on key terms that will help find relevant movie information. 
+concise and focus on key terms that will help find relevant movie information. Think about what the user wants applied to the following categories 
+Title (The title of the movie), Year(year it was released), Genres(i.e action, science fiction), Tags("island","primal fear","escape","velociraptor","dna"), Actors, Critic Rating (a 2 digit number where higher is better), Official Rating(G, PG, PG-13, R), Runtime(number of minutes of how long the movie is), Plot
 Return only the prompt used for {embedding_model} embeddings.
 
 Question: {question}

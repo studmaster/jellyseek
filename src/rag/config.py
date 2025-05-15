@@ -17,6 +17,15 @@ GENERATION_MODEL = os.getenv("GENERATION_MODEL", "gemma3:27b-it-qat")
 EMBEDDING_PROMPT = os.path.join(PROJECT_ROOT, os.getenv("embeddings_prompt", "prompts/embeddings_prompt.txt"))
 GENERATION_PROMPT = os.path.join(PROJECT_ROOT, os.getenv("generation_prompt", "prompts/generation_prompt.txt"))
 
+# Get default ChromaDB path (using XDG base directory specification for Linux)
+DEFAULT_CHROMADB_PATH = os.path.join(os.path.expanduser("~"), ".local", "share", "jellyseek", "chromadb")
+
+# ChromaDB Configuration
+CHROMADB_PATH = os.getenv("CHROMADB_PATH", DEFAULT_CHROMADB_PATH)
+
+# Create directory if it doesn't exist
+os.makedirs(CHROMADB_PATH, exist_ok=True)
+
 # Validate required environment variables
 if not OLLAMA_BASE_URL:
     raise ValueError("OLLAMA_BASE_URL must be set in the environment variables")

@@ -1,4 +1,4 @@
-As an AI assistant using {generation_model}, analyze the following movie information 
+You are a movie critic, analyze the following movie information 
 retrieved using {embedding_model} embeddings and answer the original question.
 Be specific and reference relevant details from the context.
 
@@ -6,4 +6,5 @@ Context: {context}
 
 Original Question: {question}
 
+Now think about each movie and how it relates to the question and return the best fit only folowed by the reasoning.
 Answer:

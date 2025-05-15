@@ -2,7 +2,14 @@ from langchain_ollama import OllamaLLM, OllamaEmbeddings
 import chromadb
 import os
 from typing import Tuple, List, Dict
-from config import OLLAMA_BASE_URL, EMBEDDING_MODEL, GENERATION_MODEL, EMBEDDING_PROMPT, GENERATION_PROMPT
+from config import (
+    OLLAMA_BASE_URL, 
+    EMBEDDING_MODEL, 
+    GENERATION_MODEL, 
+    EMBEDDING_PROMPT, 
+    GENERATION_PROMPT,
+    CHROMADB_PATH
+)
 
 # Model configurations
 embedding_model = EMBEDDING_MODEL
@@ -59,8 +66,8 @@ def generate_final_response(original_query: str, context: str) -> str:
 
 def chat_loop():
     """Main chat loop"""
-    # Initialize ChromaDB client with correct embedding function
-    chroma_client = chromadb.PersistentClient(path=os.path.join(os.getcwd(), "chroma_db"))
+    # Initialize ChromaDB client with configured path
+    chroma_client = chromadb.PersistentClient(path=CHROMADB_PATH)
     
     # Initialize embedding function
     embedding = ChromaDBEmbeddingFunction(
