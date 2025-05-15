@@ -78,7 +78,6 @@ def check_for_updates() -> bool:
     
     # Fetch new items from Jellyfin
     new_items = fetch_items()
-    print(new_items)
     if not new_items:
         print("Failed to fetch items from Jellyfin")
         return False
