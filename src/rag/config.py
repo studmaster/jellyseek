@@ -8,6 +8,9 @@ load_dotenv()
 # Get project root directory (where .env file is located)
 PROJECT_ROOT = Path(__file__).parent.parent.parent
 
+# Get user's home directory
+USER_HOME = os.path.expanduser("~")
+
 # LLM Configuration
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
 EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "bge-large")
@@ -18,13 +21,19 @@ EMBEDDING_PROMPT = os.path.join(PROJECT_ROOT, os.getenv("embeddings_prompt", "pr
 GENERATION_PROMPT = os.path.join(PROJECT_ROOT, os.getenv("generation_prompt", "prompts/generation_prompt.txt"))
 
 # Get default ChromaDB path (using XDG base directory specification for Linux)
-DEFAULT_CHROMADB_PATH = os.path.join(os.path.expanduser("~"), ".local", "share", "jellyseek", "chromadb")
+DEFAULT_CHROMADB_PATH = os.path.join(USER_HOME, ".local", "share", "jellyseek", "chromadb")
 
-# ChromaDB Configuration
-CHROMADB_PATH = os.getenv("CHROMADB_PATH", DEFAULT_CHROMADB_PATH)
+# ChromaDB Configuration - replace USER with actual username if present
+raw_path = os.getenv("CHROMADB_PATH", DEFAULT_CHROMADB_PATH)
+CHROMADB_PATH = raw_path.replace("/home/USER", USER_HOME)
 
 # Create directory if it doesn't exist
-os.makedirs(CHROMADB_PATH, exist_ok=True)
+try:
+    os.makedirs(CHROMADB_PATH, exist_ok=True)
+except PermissionError:
+    print(f"Warning: Cannot create directory at {CHROMADB_PATH}. Check permissions.")
+    CHROMADB_PATH = DEFAULT_CHROMADB_PATH
+    os.makedirs(CHROMADB_PATH, exist_ok=True)
 
 # Validate required environment variables
 if not OLLAMA_BASE_URL:
