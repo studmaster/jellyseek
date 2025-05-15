@@ -37,7 +37,11 @@ def query_chromadb(collection, query_text: str, n_results: int = 10) -> Tuple[Li
         query_texts=[query_text],
         n_results=n_results
     )
-    return results["documents"], results["metadatas"]
+    # Flatten the nested list of documents
+    documents = [doc for sublist in results["documents"] for doc in sublist]
+    # Flatten the nested list of metadata
+    metadatas = [meta for sublist in results["metadatas"] for meta in sublist]
+    return documents, metadatas
 
 def read_prompt_file(filename: str) -> str:
     """Read prompt template from file"""
