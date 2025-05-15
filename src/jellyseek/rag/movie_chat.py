@@ -11,7 +11,7 @@ from config import (
     CHROMADB_PATH,
     JELLYFIN_DATA_PATH
 )
-from src.jellyfin_export.main import fetch_items, save_items  # Updated import
+from jellyseek.jellyfin_export.main import fetch_items, save_items  # Updated import
 from .db_generator import generate_database
 import json
 from pathlib import Path

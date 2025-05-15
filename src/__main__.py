@@ -1,4 +1,4 @@
-from src.rag.movie_chat import chat_loop
+from jellyseek.rag.movie_chat import chat_loop
 
 def main():
     chat_loop()

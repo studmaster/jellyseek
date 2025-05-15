@@ -1,10 +1,22 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "jellyseek"
 version = "0.0.1"
-description = "Deepseek RAG implamentation of jellyfin searches"
+authors = [
+    { name = "Your Name" }
+]
+description = "A RAG-based movie search tool for Jellyfin"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.8"
 dependencies = [
     "requests>=2.32.0",
-    "python-dotenv>=1.0.1"
+    "python-dotenv>=1.0.1",
+    "langchain-ollama",
+    "chromadb"
 ]
+
+[project.scripts]
+jellyseek = "jellyseek.__main__:main"
