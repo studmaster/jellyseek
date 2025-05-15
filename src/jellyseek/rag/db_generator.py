@@ -34,69 +34,88 @@ class ChromaDBEmbeddingFunction:
         return self.langchain_embeddings.embed_documents(input)
 
 def load_movie_json(json_file: Path):
-    with json_file.open("r", encoding="utf-8") as f:
-        raw_data = json.load(f)
-    
-    # Ensure we're working with the Items list
-    data = raw_data.get('Items', [])
-
-    # Filter out movies with any null or missing categories
-    required_fields = ["Title", "Plot", "Genres", "Tags", "Actors", "PremiereDate"]
-    filtered_data = [
-        item for item in data
-        if all(item.get(field) not in (None, "") for field in required_fields)
-    ]
-
-    # ---------- DEDUP SECTION ----------
-    unique: "OrderedDict[str, dict]" = OrderedDict()   # keeps first occurrence
-    for item in filtered_data:
-        title = item.get("Title", "").strip()
-        year  = ""
-        if date_str := item.get("PremiereDate"):
-            try:
-                year = str(datetime.fromisoformat(date_str.rstrip("Z")).year)
-            except ValueError:
-                pass
-        dedup_key = f"{slug(title)}:{year}"
-        unique.setdefault(dedup_key, item)   # ignore later duplicates
-    # -----------------------------------
-
-    documents, ids, metadatas = [], [], []
-    for item in unique.values():            # iterate **de-duplicated** list
-        title = item.get("Title", "Unknown Title")
-        plot  = item.get("Plot", "")
-        year_from = ""             
+    try:
+        with json_file.open("r", encoding="utf-8") as f:
+            raw_data = json.load(f)
         
-        if date_str := item.get("PremiereDate"):
-            try:
-                year_from = str(datetime.fromisoformat(date_str.rstrip("Z")).year)
-            except ValueError:
-                pass
+        # Ensure we're working with the Items list
+        data = raw_data.get('Items', [])
+        if not data:
+            raise ValueError("No items found in the JSON file")
 
-        doc_text = (
-            f"Title: {title}\n"
-            f"Year: {year_from}\n"
-            f"Genres: {', '.join(item.get('Genres', []))}\n"
-            f"Tags: {', '.join(item.get('Tags', []))}\n"
-            f"Actors: {', '.join(item.get('Actors', [])[:5])}\n"
-            f"Critic Rating: {item.get('CriticRating', 'Not Rated')}\n"
-            f"Official Rating: {item.get('OfficialRating', 'Not Rated')}\n"
-            f"Runtime: {item.get('RuntimeMinutes', 'Unknown')} minutes\n"
-            f"Plot: {plot}"
-        )
+        print(f"Processing {len(data)} items from Jellyfin...")
 
-        documents.append(doc_text)
-        ids.append(f"{slug(title)}_{year_from}" or uuid.uuid4().hex)
-        raw_meta = {
-            "title": title,
-            "year": int(year_from) if year_from else 0,
-            "genres": ", ".join(item.get("Genres", [])),
-            "critic_rating": item.get("CriticRating"),
-            "official_rating": item.get("OfficialRating"),
-            "runtime_minutes": item.get("RuntimeMinutes")  # Added runtime to metadata
-        }
+        # Filter out movies with any null or missing categories
+        required_fields = ["Title", "Plot"]  # Reduced required fields
+        filtered_data = [
+            item for item in data
+            if all(item.get(field) not in (None, "") for field in required_fields)
+        ]
 
-        metadatas.append(clean_metadata(raw_meta))
+        if not filtered_data:
+            raise ValueError("No valid movies found after filtering")
+
+        print(f"Found {len(filtered_data)} valid movies after filtering")
+
+        # ---------- DEDUP SECTION ----------
+        unique: "OrderedDict[str, dict]" = OrderedDict()   # keeps first occurrence
+        for item in filtered_data:
+            title = item.get("Title", "").strip()
+            year  = ""
+            if date_str := item.get("PremiereDate"):
+                try:
+                    year = str(datetime.fromisoformat(date_str.rstrip("Z")).year)
+                except ValueError:
+                    pass
+            dedup_key = f"{slug(title)}:{year}"
+            unique.setdefault(dedup_key, item)   # ignore later duplicates
+        # -----------------------------------
+
+        documents, ids, metadatas = [], [], []
+        for item in unique.values():            # iterate **de-duplicated** list
+            title = item.get("Title", "Unknown Title")
+            plot  = item.get("Plot", "")
+            year_from = ""             
+            
+            if date_str := item.get("PremiereDate"):
+                try:
+                    year_from = str(datetime.fromisoformat(date_str.rstrip("Z")).year)
+                except ValueError:
+                    pass
+
+            doc_text = (
+                f"Title: {title}\n"
+                f"Year: {year_from}\n"
+                f"Genres: {', '.join(item.get('Genres', []))}\n"
+                f"Tags: {', '.join(item.get('Tags', []))}\n"
+                f"Actors: {', '.join(item.get('Actors', [])[:5])}\n"
+                f"Critic Rating: {item.get('CriticRating', 'Not Rated')}\n"
+                f"Official Rating: {item.get('OfficialRating', 'Not Rated')}\n"
+                f"Runtime: {item.get('RuntimeMinutes', 'Unknown')} minutes\n"
+                f"Plot: {plot}"
+            )
+
+            documents.append(doc_text)
+            ids.append(f"{slug(title)}_{year_from}" or uuid.uuid4().hex)
+            raw_meta = {
+                "title": title,
+                "year": int(year_from) if year_from else 0,
+                "genres": ", ".join(item.get("Genres", [])),
+                "critic_rating": item.get("CriticRating"),
+                "official_rating": item.get("OfficialRating"),
+                "runtime_minutes": item.get("RuntimeMinutes")  # Added runtime to metadata
+            }
+
+            metadatas.append(clean_metadata(raw_meta))
+    except Exception as e:
+        print(f"Error processing movie data: {str(e)}")
+        return [], [], []
+
+    if not documents:
+        print("No valid documents generated")
+        return [], [], []
+
+    print(f"Successfully processed {len(documents)} movies")
     return documents, ids, metadatas
 
 
@@ -124,61 +143,69 @@ def clean_metadata(d: dict) -> dict:
 
 def generate_database(force_update: bool = False):
     """Main function to generate the vector database"""
-    # Initialize ChromaDB client with configured path
-    chroma_client = chromadb.PersistentClient(path=CHROMADB_PATH)
-    
-    collection_name = "movies_rag"
     try:
-        collection = chroma_client.get_collection(name=collection_name)
-        if not force_update:
-            doc_count = collection.count()
-            print(f"\nFound existing database with {doc_count} documents.")
-            print("Options:")
-            print("1. Delete existing database and create new one")
-            print("2. Keep existing database and exit")
-            
-            while True:
-                choice = input("\nEnter your choice (1 or 2): ").strip()
-                if choice in ['1', '2']:
-                    break
-                print("Invalid choice. Please enter 1 or 2.")
-            
-            if choice == '2':
-                print("Keeping existing database. Exiting...")
-                return
+        # Initialize ChromaDB client with configured path
+        chroma_client = chromadb.PersistentClient(path=CHROMADB_PATH)
         
-        print("\nDeleting existing database...")
-        chroma_client.delete_collection(collection_name)
-        print("Database deleted successfully.")
-    except ValueError:
-        # Collection doesn't exist yet
-        print("\nNo existing database found. Creating new database...")
-    
-    # Initialize embedding function
-    embedding = ChromaDBEmbeddingFunction(
-        OllamaEmbeddings(
-            model=embedding_model,
-            base_url=ollama_url
+        collection_name = "movies_rag"
+        try:
+            collection = chroma_client.get_collection(name=collection_name)
+            if not force_update:
+                doc_count = collection.count()
+                print(f"\nFound existing database with {doc_count} documents.")
+                print("Options:")
+                print("1. Delete existing database and create new one")
+                print("2. Keep existing database and exit")
+                
+                while True:
+                    choice = input("\nEnter your choice (1 or 2): ").strip()
+                    if choice in ['1', '2']:
+                        break
+                    print("Invalid choice. Please enter 1 or 2.")
+                
+                if choice == '2':
+                    print("Keeping existing database. Exiting...")
+                    return
+            
+            print("\nDeleting existing database...")
+            chroma_client.delete_collection(collection_name)
+            print("Database deleted successfully.")
+        except ValueError:
+            # Collection doesn't exist yet
+            print("\nNo existing database found. Creating new database...")
+        
+        # Initialize embedding function
+        embedding = ChromaDBEmbeddingFunction(
+            OllamaEmbeddings(
+                model=embedding_model,
+                base_url=ollama_url
+            )
         )
-    )
-    
-    # Create new collection
-    collection = chroma_client.create_collection(
-        name=collection_name,
-        metadata={"description": "A collection for movies rag"},
-        embedding_function=embedding
-    )
-    
-    # Load and process movies from configured data path
-    json_path = Path(JELLYFIN_DATA_PATH) / 'jellyfin_items.json'
-    if not json_path.exists():
-        raise FileNotFoundError(f"Movie data not found at: {json_path}. Please run the jellyfin_export script first.")
-    
-    documents, doc_ids, metadatas = load_movie_json(json_path)
-    
-    # Add to collection
-    collection.add(documents=documents, ids=doc_ids, metadatas=metadatas)
-    print(f"Successfully added {len(documents)} movies to the database.")
+        
+        # Create new collection
+        collection = chroma_client.create_collection(
+            name=collection_name,
+            metadata={"description": "A collection for movies rag"},
+            embedding_function=embedding
+        )
+        
+        # Load and process movies from configured data path
+        json_path = Path(JELLYFIN_DATA_PATH) / 'jellyfin_items.json'
+        if not json_path.exists():
+            raise FileNotFoundError(f"Movie data not found at: {json_path}")
+
+        documents, doc_ids, metadatas = load_movie_json(json_path)
+        if not documents:
+            raise ValueError("No valid movie documents were generated")
+
+        # Add to collection
+        collection.add(documents=documents, ids=doc_ids, metadatas=metadatas)
+        print(f"Successfully added {len(documents)} movies to the database.")
+        return True
+
+    except Exception as e:
+        print(f"Error generating database: {str(e)}")
+        return False
 
 if __name__ == "__main__":
     generate_database()

@@ -78,10 +78,14 @@ def check_for_updates() -> bool:
     
     # Fetch new items from Jellyfin
     new_items = fetch_items()
-    if not new_items or 'Items' not in new_items:
+    if not new_items or not isinstance(new_items, dict) or 'Items' not in new_items:
         print("Failed to fetch valid items from Jellyfin")
         return False
         
+    if not new_items['Items']:
+        print("No movies found in Jellyfin")
+        return False
+
     # Load existing items if they exist
     existing_file = Path(JELLYFIN_DATA_PATH) / 'jellyfin_items.json'
     if existing_file.exists():
