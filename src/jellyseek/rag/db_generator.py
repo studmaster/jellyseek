@@ -38,29 +38,23 @@ def load_movie_json(json_file: Path):
         with json_file.open("r", encoding="utf-8") as f:
             raw_data = json.load(f)
 
-        # Get Items array from response
         data = raw_data.get("Items", [])
         if not data:
             raise ValueError("No movie items found in the JSON file")
 
         print(f"Found {len(data)} total items")
 
-        # Debug first few items
-        print("\nDebug: First item structure:")
-        if data:
-            print(json.dumps(data[0], indent=2))
-
-        # Create unique movie entries with safer title access
+        # Create unique movie entries
         unique: "OrderedDict[str, dict]" = OrderedDict()
         for item in data:
-            # Safely get title with debug info
             if not isinstance(item, dict):
                 print(f"Skipping non-dict item: {type(item)}")
                 continue
                 
-            title = item.get("Title")
+            # Use Name instead of Title for Jellyfin API
+            title = item.get("Name")
             if not title:
-                print(f"Skipping item without title: {item}")
+                print(f"Skipping item without name: {item}")
                 continue
 
             year = ""
@@ -77,8 +71,9 @@ def load_movie_json(json_file: Path):
 
         documents, ids, metadatas = [], [], []
         for item in unique.values():
-            title = str(item.get("Title", "Unknown")).strip()
-            plot = str(item.get("Plot", "No plot available"))
+            # Use Name instead of Title throughout
+            title = str(item.get("Name", "Unknown")).strip()
+            plot = str(item.get("Overview", "No plot available"))  # Also changed Plot to Overview
             year_from = ""
             
             if date_str := item.get("PremiereDate"):
@@ -95,7 +90,7 @@ def load_movie_json(json_file: Path):
                 f"Actors: {', '.join(map(str, (item.get('Actors', []) or [])[:5]))}\n"
                 f"Critic Rating: {item.get('CriticRating', 'Not Rated')}\n"
                 f"Official Rating: {item.get('OfficialRating', 'Not Rated')}\n"
-                f"Runtime: {item.get('RuntimeMinutes', 'Unknown')} minutes\n"
+                f"Runtime: {item.get('RunTimeTicks', 'Unknown')} minutes\n"
                 f"Plot: {plot}"
             )
 
@@ -108,7 +103,7 @@ def load_movie_json(json_file: Path):
                 "genres": ", ".join(map(str, item.get("Genres", []))),
                 "critic_rating": item.get("CriticRating"),
                 "official_rating": item.get("OfficialRating"),
-                "runtime_minutes": item.get("RuntimeMinutes")
+                "runtime_minutes": item.get("RunTimeTicks")  # Changed to RunTimeTicks
             }
             metadatas.append(clean_metadata(raw_meta))
 
