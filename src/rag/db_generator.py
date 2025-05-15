@@ -119,10 +119,37 @@ def clean_metadata(d: dict) -> dict:
             out[k] = str(v)               # final safety net
     return out
 
-def generate_database():
+def generate_database(force_update: bool = False):
     """Main function to generate the vector database"""
     # Initialize ChromaDB client with configured path
     chroma_client = chromadb.PersistentClient(path=CHROMADB_PATH)
+    
+    collection_name = "movies_rag"
+    try:
+        collection = chroma_client.get_collection(name=collection_name)
+        if not force_update:
+            doc_count = collection.count()
+            print(f"\nFound existing database with {doc_count} documents.")
+            print("Options:")
+            print("1. Delete existing database and create new one")
+            print("2. Keep existing database and exit")
+            
+            while True:
+                choice = input("\nEnter your choice (1 or 2): ").strip()
+                if choice in ['1', '2']:
+                    break
+                print("Invalid choice. Please enter 1 or 2.")
+            
+            if choice == '2':
+                print("Keeping existing database. Exiting...")
+                return
+        
+        print("\nDeleting existing database...")
+        chroma_client.delete_collection(collection_name)
+        print("Database deleted successfully.")
+    except ValueError:
+        # Collection doesn't exist yet
+        print("\nNo existing database found. Creating new database...")
     
     # Initialize embedding function
     embedding = ChromaDBEmbeddingFunction(
@@ -132,32 +159,12 @@ def generate_database():
         )
     )
     
-    # Check if collection exists
-    collection_name = "movies_rag"
-    try:
-        collection = chroma_client.get_collection(
-            name=collection_name,
-            embedding_function=embedding
-        )
-        print(f"Found existing collection with {collection.count()} documents")
-        user_input = input("Delete existing collection and recreate? (y/N): ")
-        if user_input.lower() == 'y':
-            chroma_client.delete_collection(collection_name)
-            collection = chroma_client.create_collection(
-                name=collection_name,
-                metadata={"description": "A collection for movies rag"},
-                embedding_function=embedding
-            )
-        else:
-            print("Exiting without changes")
-            return
-    except ValueError:
-        # Collection doesn't exist, create it
-        collection = chroma_client.create_collection(
-            name=collection_name,
-            metadata={"description": "A collection for movies rag"},
-            embedding_function=embedding
-        )
+    # Create new collection
+    collection = chroma_client.create_collection(
+        name=collection_name,
+        metadata={"description": "A collection for movies rag"},
+        embedding_function=embedding
+    )
     
     # Load and process movies from configured data path
     json_path = Path(JELLYFIN_DATA_PATH) / 'jellyfin_items.json'

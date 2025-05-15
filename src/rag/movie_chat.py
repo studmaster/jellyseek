@@ -10,6 +10,10 @@ from config import (
     GENERATION_PROMPT,
     CHROMADB_PATH
 )
+from jellyfin_export.main import fetch_items, save_items
+from .db_generator import generate_database
+import json
+from pathlib import Path
 
 # Model configurations
 embedding_model = EMBEDDING_MODEL
@@ -64,6 +68,41 @@ def generate_final_response(original_query: str, context: str) -> str:
     llm = OllamaLLM(model=generation_model, base_url=ollama_url)
     return llm.invoke(prompt)
 
+def check_for_updates() -> bool:
+    """
+    Fetch new data from Jellyfin and check for updates.
+    Returns True if updates were found and applied.
+    """
+    print("\nChecking for updates...")
+    
+    # Fetch new items from Jellyfin
+    new_items = fetch_items()
+    if not new_items:
+        print("Failed to fetch items from Jellyfin")
+        return False
+        
+    # Load existing items
+    existing_file = Path(JELLYFIN_DATA_PATH) / 'jellyfin_items.json'
+    if existing_file.exists():
+        with open(existing_file, 'r', encoding='utf-8') as f:
+            existing_items = json.load(f)
+            
+        # Compare item counts
+        new_count = len(new_items.get('Items', []))
+        existing_count = len(existing_items.get('Items', []))
+        
+        if new_count <= existing_count:
+            print("No new items found.")
+            return False
+            
+        print(f"Found {new_count - existing_count} new items!")
+    
+    # Save new items and regenerate database
+    save_items(new_items)
+    print("Saved new items, regenerating database...")
+    generate_database(force_update=True)
+    return True
+
 def chat_loop():
     """Main chat loop"""
     # Initialize ChromaDB client with configured path
@@ -83,27 +122,31 @@ def chat_loop():
         embedding_function=embedding
     )
     
-    print("Movie Chat Assistant Ready! (Type '/quit' to exit)")
+    print("Movie Chat Assistant Ready! (Type '/quit' to exit, '/update' to check for new movies)")
     
     while True:
         user_query = input("\nEnter your question about movies: ").strip()
+        
         if user_query.lower() == '/quit':
             break
+        elif user_query.lower() == '/update':
+            if check_for_updates():
+                # Refresh collection after update
+                collection = chroma_client.get_collection(
+                    name="movies_rag",
+                    embedding_function=embedding
+                )
+            continue
             
         # Step 1: Generate optimized search query
         search_query = generate_search_query(user_query)
-        #print("\n######## Generated Search Query ########")
-        #print(search_query)
         
         # Step 2: Retrieve relevant documents
         retrieved_docs, metadata = query_chromadb(collection, search_query)
         context = " ".join(retrieved_docs[0]) if retrieved_docs else "No relevant documents found."
-        #print("\n######## Retrieved Context ########")
-        #print(context)
         
         # Step 3: Generate final response
         response = generate_final_response(user_query, context)
-        #print("\n######## Final Response ########")
         print(response)
 
 if __name__ == "__main__":
