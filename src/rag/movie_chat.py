@@ -8,9 +8,10 @@ from config import (
     GENERATION_MODEL, 
     EMBEDDING_PROMPT, 
     GENERATION_PROMPT,
-    CHROMADB_PATH
+    CHROMADB_PATH,
+    JELLYFIN_DATA_PATH
 )
-from jellyfin_export.main import fetch_items, save_items
+from src.jellyfin_export.main import fetch_items, save_items  # Updated import
 from .db_generator import generate_database
 import json
 from pathlib import Path
@@ -107,6 +108,7 @@ def chat_loop():
     """Main chat loop"""
     # Initialize ChromaDB client with configured path
     chroma_client = chromadb.PersistentClient(path=CHROMADB_PATH)
+    collection_name = "movies_rag"
     
     # Initialize embedding function
     embedding = ChromaDBEmbeddingFunction(
@@ -116,13 +118,37 @@ def chat_loop():
         )
     )
     
-    # Get collection with embedding function
-    collection = chroma_client.get_collection(
-        name="movies_rag",
-        embedding_function=embedding
-    )
+    # Check if collection exists
+    try:
+        collection = chroma_client.get_collection(
+            name=collection_name,
+            embedding_function=embedding
+        )
+        print(f"\nFound existing database with {collection.count()} movies.")
+    except ValueError:
+        print("\nNo existing database found!")
+        while True:
+            choice = input("Would you like to create a new database? (y/N): ").strip().lower()
+            if choice in ['y', 'n', '']:
+                break
+            print("Invalid choice. Please enter 'y' or 'n'")
+        
+        if choice != 'y':
+            print("Cannot proceed without a database. Exiting...")
+            return
+            
+        print("\nFetching movies from Jellyfin...")
+        if not check_for_updates():
+            print("Failed to create database. Exiting...")
+            return
+            
+        # Get the newly created collection
+        collection = chroma_client.get_collection(
+            name=collection_name,
+            embedding_function=embedding
+        )
     
-    print("Movie Chat Assistant Ready! (Type '/quit' to exit, '/update' to check for new movies)")
+    print("\nMovie Chat Assistant Ready! (Type '/quit' to exit, '/update' to check for new movies)")
     
     while True:
         user_query = input("\nEnter your question about movies: ").strip()
@@ -133,7 +159,7 @@ def chat_loop():
             if check_for_updates():
                 # Refresh collection after update
                 collection = chroma_client.get_collection(
-                    name="movies_rag",
+                    name=collection_name,
                     embedding_function=embedding
                 )
             continue
