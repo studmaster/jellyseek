@@ -23,7 +23,23 @@ def initialize_database():
         )
     )
     
-    return chroma_client, collection_name, embedding
+    # Try to get existing collection
+    try:
+        collection = chroma_client.get_collection(
+            name=collection_name,
+            embedding_function=embedding
+        )
+        print(f"\nFound existing database with {collection.count()} movies.")
+    except ValueError:
+        # Collection doesn't exist, create it
+        collection = chroma_client.create_collection(
+            name=collection_name,
+            embedding_function=embedding,
+            metadata={"description": "Movies RAG collection"}
+        )
+        print("\nCreated new database.")
+    
+    return chroma_client, collection_name, embedding, collection
 
 def query_database(collection, query_text: str, n_results: int = 10):
     """Query the ChromaDB collection"""

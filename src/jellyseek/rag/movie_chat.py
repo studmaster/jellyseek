@@ -20,6 +20,7 @@ import json
 from pathlib import Path
 
 def handle_empty_database(cmd_handler, collection, embedding, collection_name, chroma_client):
+    """Handle case when database exists but is empty"""
     print("\nDatabase exists but contains no movies!")
     if input("Would you like to create a new database? (y/N): ").strip().lower() != 'y':
         print("Cannot proceed without movies in the database. Exiting...")
@@ -34,6 +35,7 @@ def handle_empty_database(cmd_handler, collection, embedding, collection_name, c
     )
 
 def handle_command(cmd_handler, user_query, collection, embedding, collection_name, chroma_client):
+    """Handle chat commands"""
     result = cmd_handler.handle(
         user_query,
         collection=collection,
@@ -44,6 +46,7 @@ def handle_command(cmd_handler, user_query, collection, embedding, collection_na
     return result is not None and result and user_query == '/quit'
 
 def handle_query(user_query, collection):
+    """Handle regular chat queries"""
     search_query = generate_search_query(user_query)
     retrieved_docs, _ = query_database(collection, search_query)
     
@@ -57,26 +60,13 @@ def handle_query(user_query, collection):
 def chat_loop():
     """Main chat loop"""
     # Initialize components
-    chroma_client, collection_name, embedding = initialize_database()
+    chroma_client, collection_name, embedding, collection = initialize_database()
     cmd_handler = create_command_handler()
     
-    try:
-        # Initialize collection
-        collection = chroma_client.get_or_create_collection(
-            name=collection_name,
-            embedding_function=embedding,
-            metadata={"description": "Movies RAG collection"}
-        )
-        
-        if collection.count() == 0:
-            if not handle_empty_database(cmd_handler, collection, embedding, collection_name, chroma_client):
-                return
-        
-        print(f"\nFound existing database with {collection.count()} movies.")
-            
-    except Exception as e:
-        print(f"\nError accessing database: {str(e)}")
-        return
+    # Check if collection is empty
+    if collection.count() == 0:
+        if not handle_empty_database(cmd_handler, collection, embedding, collection_name, chroma_client):
+            return
     
     print("\nMovie Chat Assistant Ready! (Type '/help' for available commands)")
     
