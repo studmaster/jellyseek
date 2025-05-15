@@ -1,4 +1,4 @@
-from config import JELLYFIN_API_KEY, JELLYFIN_URL, JELLYFIN_DATA_PATH
+from jellyseek.jellyfin_export.config import JELLYFIN_API_KEY, JELLYFIN_URL, JELLYFIN_DATA_PATH
 import requests
 import json
 from pathlib import Path

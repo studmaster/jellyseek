@@ -7,7 +7,7 @@ from datetime import datetime
 from typing import Dict
 from collections import OrderedDict
 import re, unicodedata, uuid
-from config import (
+from jellyseek.rag.config import (
     OLLAMA_BASE_URL, 
     EMBEDDING_MODEL, 
     GENERATION_MODEL, 
