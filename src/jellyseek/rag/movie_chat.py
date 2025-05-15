@@ -120,33 +120,36 @@ def chat_loop():
     
     # Check if collection exists
     try:
-        collection = chroma_client.get_collection(
+        collection = chroma_client.get_or_create_collection(
             name=collection_name,
-            embedding_function=embedding
+            embedding_function=embedding,
+            metadata={"description": "Movies RAG collection"}
         )
-        print(f"\nFound existing database with {collection.count()} movies.")
-    except ValueError:
-        print("\nNo existing database found!")
-        while True:
-            choice = input("Would you like to create a new database? (y/N): ").strip().lower()
-            if choice in ['y', 'n', '']:
-                break
-            print("Invalid choice. Please enter 'y' or 'n'")
         
-        if choice != 'y':
-            print("Cannot proceed without a database. Exiting...")
-            return
+        # If collection exists but is empty, ask to create database
+        if collection.count() == 0:
+            print("\nDatabase exists but contains no movies!")
+            while True:
+                choice = input("Would you like to create a new database? (y/N): ").strip().lower()
+                if choice in ['y', 'n', '']:
+                    break
+                print("Invalid choice. Please enter 'y' or 'n'")
             
-        print("\nFetching movies from Jellyfin...")
-        if not check_for_updates():
-            print("Failed to create database. Exiting...")
-            return
+            if choice != 'y':
+                print("Cannot proceed without movies in the database. Exiting...")
+                return
+                
+            print("\nFetching movies from Jellyfin...")
+            if not check_for_updates():
+                print("Failed to create database. Exiting...")
+                return
+        else:
+            print(f"\nFound existing database with {collection.count()} movies.")
             
-        # Get the newly created collection
-        collection = chroma_client.get_collection(
-            name=collection_name,
-            embedding_function=embedding
-        )
+    except Exception as e:
+        print(f"\nError accessing database: {str(e)}")
+        print("Cannot proceed. Exiting...")
+        return
     
     print("\nMovie Chat Assistant Ready! (Type '/quit' to exit, '/update' to check for new movies)")
     
