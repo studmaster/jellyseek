@@ -28,6 +28,8 @@ DEFAULT_JELLYFIN_DATA_PATH = os.path.expanduser("~/.local/share/jellyseek/data")
 CHROMADB_PATH = os.path.expanduser(os.getenv("CHROMADB_PATH", DEFAULT_CHROMADB_PATH))
 JELLYFIN_DATA_PATH = os.path.expanduser(os.getenv("JELLYFIN_DATA_PATH", DEFAULT_JELLYFIN_DATA_PATH))
 
+MOVIES_COLLECTION_NAME = os.getenv("MOVIES_COLLECTION_NAME", "movies_rag")
+
 # Create directories if they don't exist
 os.makedirs(CHROMADB_PATH, exist_ok=True)
 os.makedirs(JELLYFIN_DATA_PATH, exist_ok=True)

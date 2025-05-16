@@ -12,7 +12,8 @@ from jellyseek.rag.config import (
     EMBEDDING_MODEL, 
     GENERATION_MODEL, 
     CHROMADB_PATH,
-    JELLYFIN_DATA_PATH
+    JELLYFIN_DATA_PATH,
+    MOVIES_COLLECTION_NAME
 )
 
 # Define the embedding model
@@ -144,7 +145,7 @@ def generate_database(force_update: bool = False):
         # Initialize ChromaDB client with configured path
         chroma_client = chromadb.PersistentClient(path=CHROMADB_PATH)
         
-        collection_name = "movies_rag"
+        collection_name = MOVIES_COLLECTION_NAME
         try:
             collection = chroma_client.get_collection(name=collection_name)
             if not force_update:

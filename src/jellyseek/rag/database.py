@@ -1,6 +1,6 @@
 import chromadb
 from langchain_ollama import OllamaEmbeddings
-from jellyseek.rag.config import CHROMADB_PATH, EMBEDDING_MODEL, OLLAMA_BASE_URL
+from jellyseek.rag.config import MOVIES_COLLECTION_NAME, CHROMADB_PATH, EMBEDDING_MODEL, OLLAMA_BASE_URL
 
 class ChromaDBEmbeddingFunction:
     def __init__(self, langchain_embeddings):
@@ -14,7 +14,7 @@ class ChromaDBEmbeddingFunction:
 def initialize_database():
     """Initialize ChromaDB client and collection"""
     chroma_client = chromadb.PersistentClient(path=CHROMADB_PATH)
-    collection_name = "movies_rag"
+    collection_name = MOVIES_COLLECTION_NAME
     
     embedding = ChromaDBEmbeddingFunction(
         OllamaEmbeddings(
