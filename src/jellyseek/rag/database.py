@@ -23,14 +23,17 @@ def initialize_database():
         )
     )
     
-    # Try to get existing collection
-    try:
+    # Check if collection exists first
+    collections = chroma_client.list_collections()
+    collection_exists = any(c.name == collection_name for c in collections)
+    
+    if collection_exists:
         collection = chroma_client.get_collection(
             name=collection_name,
             embedding_function=embedding
         )
         print(f"\nFound existing database with {collection.count()} movies.")
-    except ValueError:
+    else:
         # Collection doesn't exist, create it
         collection = chroma_client.create_collection(
             name=collection_name,
