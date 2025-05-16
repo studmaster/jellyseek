@@ -1,4 +1,5 @@
 import chromadb
+import os
 from langchain_ollama import OllamaEmbeddings
 from jellyseek.rag.config import MOVIES_COLLECTION_NAME, CHROMADB_PATH, EMBEDDING_MODEL, OLLAMA_BASE_URL
 
@@ -13,6 +14,9 @@ class ChromaDBEmbeddingFunction:
 
 def initialize_database():
     """Initialize ChromaDB client and collection"""
+    # Ensure the database directory exists
+    os.makedirs(CHROMADB_PATH, exist_ok=True)
+    
     chroma_client = chromadb.PersistentClient(path=CHROMADB_PATH)
     collection_name = MOVIES_COLLECTION_NAME
     
@@ -22,25 +26,18 @@ def initialize_database():
             base_url=OLLAMA_BASE_URL
         )
     )
-    
-    # Check if collection exists first
-    collections = chroma_client.list_collections()
-    collection_exists = any(c.name == collection_name for c in collections)
-    
-    if collection_exists:
-        collection = chroma_client.get_collection(
-            name=collection_name,
-            embedding_function=embedding
-        )
+
+    # Get or create collection by name
+    collection = chroma_client.get_or_create_collection(
+        name=collection_name,
+        embedding_function=embedding,
+        metadata={"description": "Movies RAG collection"}
+    )
+
+    if collection.count() > 0:
         print(f"\nFound existing database with {collection.count()} movies.")
     else:
-        # Collection doesn't exist, create it
-        collection = chroma_client.create_collection(
-            name=collection_name,
-            embedding_function=embedding,
-            metadata={"description": "Movies RAG collection"}
-        )
-        print("\nCreated new database.")
+        print("\nCreated new empty database.")
     
     return chroma_client, collection_name, embedding, collection
 
